@@ -88,7 +88,6 @@ jobs:
           else
             gh release create "${RELEASE_TAG}" \
               --repo "${GH_REPO}" \
-              --target "${RELEASE_TAG}" \
               "dist/Membar-${VERSION}-arm64.zip" \
               "dist/Membar-${VERSION}-arm64.zip.sha256" \
               "dist/Membar-${VERSION}-x86_64.zip" \
