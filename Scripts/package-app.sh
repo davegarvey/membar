@@ -24,6 +24,7 @@ APP_CONTENTS="$APP_DIR/Contents"
 rm -rf "$DIST_DIR"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources"
 
+swift build -c release --arch "$ARCH"
 BIN_PATH=$(swift build -c release --arch "$ARCH" --show-bin-path)/Membar
 cp "$BIN_PATH" "$APP_CONTENTS/MacOS/Membar"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
