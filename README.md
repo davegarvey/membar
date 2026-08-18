@@ -62,6 +62,8 @@ Releases use [Grubble](https://github.com/davegarvey/grubble) and conventional c
 
 The version workflow requires a repository secret named `RELEASE_PAT`. It is used only to create the release tag so that GitHub triggers the tag-based build workflow. The PAT should be fine-grained and limited to this repository.
 
+If a release build needs to be retried, dispatch the Release workflow manually with the existing tag; it uploads fresh assets to the existing release.
+
 A future Homebrew Cask can consume these release assets once the repository has a stable public GitHub URL.
 
 Membar is released under the MIT License. Contributions should preserve the no-telemetry, no-network, menu-bar-only design.
