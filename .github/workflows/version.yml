@@ -113,6 +113,9 @@ jobs:
 
       - name: Calculate version and open release PR
         uses: davegarvey/grubble@v5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           preset: git
           push: true
