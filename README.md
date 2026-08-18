@@ -8,11 +8,11 @@ Membar is a native macOS menu-bar memory indicator. The RAM-chip fill shows syst
 
 The simplest installation is the versioned application archive from the repository's GitHub Releases page:
 
-1. Download `Membar-<version>-arm64.zip`.
+1. Download `Membar-<version>-arm64.zip` for Apple Silicon or `Membar-<version>-x86_64.zip` for an Intel Mac.
 2. Open the archive and move `Membar.app` to `/Applications`.
 3. Open `Membar.app`. It will appear in the menu bar and not in the Dock.
 
-Release archives are for Apple Silicon Macs and require macOS 13 or newer. The accompanying `.sha256` file can be used to verify an archive with `shasum -a 256`.
+Release archives require macOS 13 or newer. The accompanying `.sha256` file can be used to verify an archive with `shasum -a 256`.
 
 The first launch of an unsigned, source-built archive may be blocked by Gatekeeper. Control-click the app, choose **Open**, and confirm, or use **System Settings > Privacy & Security > Open Anyway**. Maintainers can sign and notarize release archives before publishing them for a no-warning install experience.
 
@@ -25,6 +25,8 @@ swift --version
 sh Scripts/package-app.sh
 open dist/Membar.app
 ```
+
+The packaging script automatically builds for the current Mac architecture. Set `ARCH=arm64` or `ARCH=x86_64` to select an architecture explicitly.
 
 To install that build for normal use:
 
@@ -41,7 +43,7 @@ rm -rf /Applications/Membar.app
 
 ## Requirements
 
-- Apple Silicon Mac
+- Apple Silicon or Intel Mac
 - macOS 13 or newer
 - Swift command-line tools
 
@@ -56,6 +58,6 @@ The executable and app bundle both use AppKit's accessory activation policy and 
 
 ## Releases
 
-Push a tag such as `v0.1.0` to build and publish an arm64 `.app` archive automatically through GitHub Actions. The workflow also publishes a SHA-256 checksum alongside the archive. A future Homebrew Cask can consume these release assets once the repository has a stable public GitHub URL.
+Push a tag such as `v0.1.0` to build and publish native arm64 and x86_64 `.app` archives automatically through GitHub Actions. The workflow also publishes a SHA-256 checksum alongside each archive. A future Homebrew Cask can consume these release assets once the repository has a stable public GitHub URL.
 
 Membar is released under the MIT License. Contributions should preserve the no-telemetry, no-network, menu-bar-only design.

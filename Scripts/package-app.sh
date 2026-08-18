@@ -6,7 +6,17 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT_DIR"
 
 VERSION=${VERSION:-0.1.0}
-ARCH=${ARCH:-arm64}
+ARCH=${ARCH:-$(uname -m)}
+
+case "$ARCH" in
+    arm64|x86_64)
+        ;;
+    *)
+        printf '%s\n' "Unsupported architecture: $ARCH" >&2
+        exit 1
+        ;;
+esac
+
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/Membar.app"
 APP_CONTENTS="$APP_DIR/Contents"
