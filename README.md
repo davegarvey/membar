@@ -58,6 +58,10 @@ The executable and app bundle both use AppKit's accessory activation policy and 
 
 ## Releases
 
-Push a tag such as `v0.1.0` to build and publish native arm64 and x86_64 `.app` archives automatically through GitHub Actions. The workflow also publishes a SHA-256 checksum alongside each archive. A future Homebrew Cask can consume these release assets once the repository has a stable public GitHub URL.
+Releases use [Grubble](https://github.com/davegarvey/grubble) and conventional commits. A push to `main` opens a release PR when a version bump is needed. After that PR is merged, the version workflow creates the `vX.Y.Z` tag and the release workflow builds and publishes native arm64 and x86_64 `.app` archives. The workflow also publishes a SHA-256 checksum alongside each archive.
+
+The version workflow requires a repository secret named `RELEASE_PAT`. It is used only to create the release tag so that GitHub triggers the tag-based build workflow. The PAT should be fine-grained and limited to this repository.
+
+A future Homebrew Cask can consume these release assets once the repository has a stable public GitHub URL.
 
 Membar is released under the MIT License. Contributions should preserve the no-telemetry, no-network, menu-bar-only design.

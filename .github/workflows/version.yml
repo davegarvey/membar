@@ -1,0 +1,122 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: version-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  tag-merged-release:
+    name: Tag merged release
+    runs-on: ubuntu-latest
+    outputs:
+      tagged: ${{ steps.tag.outputs.tagged }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Find merged release PR
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_INFO=$(gh pr list \
+            --state merged \
+            --base main \
+            --limit 20 \
+            --json number,headRefName,mergeCommit,mergedAt \
+            | jq -r '[.[] | select(.headRefName | test("^release/v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.mergedAt) | last // empty')
+
+          if [ -n "$PR_INFO" ] && [ "$PR_INFO" != "null" ]; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$(printf '%s' "$PR_INFO" | jq -r '.number')" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve release tag
+        id: resolve
+        if: steps.detect.outputs.merged == 'true'
+        uses: davegarvey/grubble@v5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          release-from-pr: ${{ steps.detect.outputs.pr_number }}
+
+      - name: Create release tag
+        id: tag
+        if: steps.detect.outputs.merged == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          RELEASE_SPEC: ${{ steps.resolve.outputs.release-spec }}
+        run: |
+          set -eu
+
+          TAG_NAME=$(printf '%s' "$RELEASE_SPEC" | jq -er '.tag_name')
+          MERGE_SHA=$(printf '%s' "$RELEASE_SPEC" | jq -er '.merge_commit_sha')
+          REF_URL="repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}"
+
+          if EXISTING_REF=$(gh api "$REF_URL" 2>/dev/null); then
+            EXISTING_SHA=$(printf '%s' "$EXISTING_REF" | jq -r '.object.sha')
+            EXISTING_TYPE=$(printf '%s' "$EXISTING_REF" | jq -r '.object.type')
+            if [ "$EXISTING_TYPE" = "tag" ]; then
+              EXISTING_SHA=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/git/tags/${EXISTING_SHA}" \
+                --jq '.object.sha')
+            fi
+
+            if [ "$EXISTING_SHA" != "$MERGE_SHA" ]; then
+              echo "Tag ${TAG_NAME} already points to ${EXISTING_SHA}, expected ${MERGE_SHA}" >&2
+              exit 1
+            fi
+            echo "Tag ${TAG_NAME} already points to the release merge commit"
+            echo "tagged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${TAG_NAME}" \
+            -f "sha=${MERGE_SHA}"
+          echo "tagged=true" >> "$GITHUB_OUTPUT"
+
+  open-release-pr:
+    name: Open release PR
+    needs: tag-merged-release
+    if: needs.tag-merged-release.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch release tags
+        run: git fetch origin --tags --force
+
+      - name: Calculate version and open release PR
+        uses: davegarvey/grubble@v5
+        with:
+          preset: git
+          push: true
+          create-pr: true
+          changelog: true
+          git-user-name: github-actions[bot]
+          git-user-email: 41898282+github-actions[bot]@users.noreply.github.com

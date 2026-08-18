@@ -1,0 +1,7 @@
+{
+  "preset": "git",
+  "tagPrefix": "v",
+  "changelog": true,
+  "gitUserName": "github-actions[bot]",
+  "gitUserEmail": "41898282+github-actions[bot]@users.noreply.github.com"
+}
