@@ -111,6 +111,16 @@ jobs:
       - name: Fetch release tags
         run: git fetch origin --tags --force
 
+      - name: Determine bump type
+        id: bump_type
+        uses: davegarvey/grubble@v5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          preset: git
+          bump-type-only: true
+
       - name: Calculate next version
         id: next
         uses: davegarvey/grubble@v5
@@ -125,10 +135,10 @@ jobs:
       - name: Check whether a bump is needed
         id: changed
         env:
+          BUMP_TYPE: ${{ steps.bump_type.outputs['bump-type'] }}
           NEXT_VERSION: ${{ steps.next.outputs.version }}
-          PREVIOUS_VERSION: ${{ steps.next.outputs.previous-version }}
         run: |
-          if [ -z "$NEXT_VERSION" ] || [ "$NEXT_VERSION" = "$PREVIOUS_VERSION" ]; then
+          if [ -z "$BUMP_TYPE" ] || [ "$BUMP_TYPE" = "none" ] || [ -z "$NEXT_VERSION" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
