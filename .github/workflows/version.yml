@@ -146,22 +146,23 @@ jobs:
 
       - name: Write changelog and push release branch
         if: steps.changed.outputs.changed == 'true'
-        uses: davegarvey/grubble@v5
         env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          preset: git
-          push: true
-          branch: release/v${{ steps.next.outputs.version }}
-          changelog: true
-          git-user-name: github-actions[bot]
-          git-user-email: 41898282+github-actions[bot]@users.noreply.github.com
+          BRANCH: release/v${{ steps.next.outputs.version }}
+        run: |
+          git fetch origin "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" || true
+          ./grubble \
+            --preset git \
+            --push \
+            --git-branch "$BRANCH" \
+            --force-push \
+            --changelog \
+            --git-user-name "github-actions[bot]" \
+            --git-user-email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create release PR
         if: steps.changed.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           VERSION: ${{ steps.next.outputs.version }}
         run: |
           BRANCH="release/v${VERSION}"
