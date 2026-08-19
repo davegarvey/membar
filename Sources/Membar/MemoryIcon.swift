@@ -1,7 +1,7 @@
 import AppKit
 
 enum MemoryIcon {
-    static let size = NSSize(width: 18, height: 18)
+    static let size = NSSize(width: 24, height: 18)
 
     static func image(fillLevel: Int, pressure: MemoryPressure) -> NSImage {
         let image = NSImage(size: size)
@@ -13,7 +13,7 @@ enum MemoryIcon {
 
         drawPins(using: foregroundColor)
 
-        let bodyRect = NSRect(x: 4, y: 3.5, width: 10, height: 11)
+        let bodyRect = NSRect(x: 4, y: 3.5, width: 16, height: 11)
         let body = NSBezierPath(
             roundedRect: bodyRect,
             xRadius: 1.8,
@@ -23,41 +23,39 @@ enum MemoryIcon {
         foregroundColor.setStroke()
         body.stroke()
 
-        let segmentWidth: CGFloat = 1.35
-        let segmentHeight: CGFloat = 2.35
-        let segmentGap: CGFloat = 0.38
-        let segmentStartX: CGFloat = 5.15
-        let segmentStartY: CGFloat = 5.0
-        let rowGap: CGFloat = 1.0
+        let barRect = bodyRect.insetBy(dx: 1.6, dy: 1.7)
         let emptyColor = foregroundColor.withAlphaComponent(0.24)
+        let emptyBar = NSBezierPath(
+            roundedRect: barRect,
+            xRadius: 0.8,
+            yRadius: 0.8
+        )
+        emptyColor.setFill()
+        emptyBar.fill()
 
-        for index in 0..<10 {
-            let row = index / 5
-            let column = index % 5
-            let rect = NSRect(
-                x: segmentStartX + CGFloat(column) * (segmentWidth + segmentGap),
-                y: segmentStartY + CGFloat(row) * (segmentHeight + rowGap),
-                width: segmentWidth,
-                height: segmentHeight
+        let fillWidth = barRect.width * CGFloat(clampedFillLevel) / 10
+        if fillWidth > 0 {
+            NSGraphicsContext.saveGraphicsState()
+            emptyBar.addClip()
+            let fillRect = NSRect(
+                x: barRect.minX,
+                y: barRect.minY,
+                width: fillWidth,
+                height: barRect.height
             )
-            let segment = NSBezierPath(
-                roundedRect: rect,
-                xRadius: 0.35,
-                yRadius: 0.35
-            )
-            (index < clampedFillLevel ? foregroundColor : emptyColor).setFill()
-            segment.fill()
+            foregroundColor.setFill()
+            NSBezierPath(rect: fillRect).fill()
+            NSGraphicsContext.restoreGraphicsState()
         }
 
-        image.isTemplate = pressure == .normal
+        image.isTemplate = false
         return image
     }
 
     private static func color(for pressure: MemoryPressure) -> NSColor {
         switch pressure {
         case .normal:
-            // A template image lets the menu bar supply its native foreground color.
-            return .black
+            return .systemGreen
         case .warning:
             return .systemYellow
         case .critical:
@@ -76,13 +74,13 @@ enum MemoryIcon {
                 rect: NSRect(x: 1.9, y: y, width: sidePinWidth, height: sidePinHeight)
             ).fill()
             NSBezierPath(
-                rect: NSRect(x: 14, y: y, width: sidePinWidth, height: sidePinHeight)
+                rect: NSRect(x: 20, y: y, width: sidePinWidth, height: sidePinHeight)
             ).fill()
         }
 
         let verticalPinWidth: CGFloat = 0.9
         let verticalPinHeight: CGFloat = 1.9
-        let verticalPinXPositions: [CGFloat] = [6.1, 11.0]
+        let verticalPinXPositions: [CGFloat] = [8.0, 15.0]
         for x in verticalPinXPositions {
             NSBezierPath(
                 rect: NSRect(x: x, y: 1.4, width: verticalPinWidth, height: verticalPinHeight)
