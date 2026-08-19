@@ -13,6 +13,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Membar"
+        ),
+        .testTarget(
+            name: "MembarTests",
+            dependencies: ["Membar"]
         )
     ],
     swiftLanguageVersions: [.v5]

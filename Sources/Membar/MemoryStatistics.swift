@@ -29,12 +29,12 @@ struct MemoryStatisticsReader {
             return nil
         }
 
-        // These are host-wide resident pages. The compressor count is included
-        // because compressed memory still occupies physical memory.
-        let usedPages = UInt64(statistics.active_count)
-            + UInt64(statistics.inactive_count)
-            + UInt64(statistics.wire_count)
-            + UInt64(statistics.compressor_page_count)
+        let usedPages = MemoryUsage.activityMonitorUsedPages(
+            internalPages: UInt64(statistics.internal_page_count),
+            wirePages: UInt64(statistics.wire_count),
+            compressedPages: UInt64(statistics.compressor_page_count),
+            purgeablePages: UInt64(statistics.purgeable_count)
+        )
         let usedBytes = usedPages.multipliedReportingOverflow(by: pageSize)
 
         guard !usedBytes.overflow else {
@@ -42,5 +42,21 @@ struct MemoryStatisticsReader {
         }
 
         return min(max(Double(usedBytes.partialValue) / Double(totalBytes), 0), 1)
+    }
+}
+
+enum MemoryUsage {
+    // Match Activity Monitor: App Memory + Wired + Compressed. File-backed and
+    // purgeable pages are reclaimable cached files, not memory in use.
+    static func activityMonitorUsedPages(
+        internalPages: UInt64,
+        wirePages: UInt64,
+        compressedPages: UInt64,
+        purgeablePages: UInt64
+    ) -> UInt64 {
+        let appPages = internalPages > purgeablePages
+            ? internalPages - purgeablePages
+            : 0
+        return appPages + wirePages + compressedPages
     }
 }
