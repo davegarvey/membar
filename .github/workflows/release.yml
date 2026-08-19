@@ -41,10 +41,66 @@ jobs:
           test "$(uname -m)" = "${{ matrix.arch }}"
           swift --version
 
-      - name: Build application archive
+      - name: Verify release signing configuration
+        if: ${{ vars.RELEASE_SIGNING_ENABLED == 'true' }}
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for variable in \
+            APPLE_CERTIFICATE_BASE64 \
+            APPLE_CERTIFICATE_PASSWORD \
+            APPLE_SIGNING_IDENTITY \
+            APPLE_ID \
+            APPLE_APP_SPECIFIC_PASSWORD \
+            APPLE_TEAM_ID
+          do
+            if [ -z "$(printenv "$variable")" ]; then
+              printf 'Missing required secret: %s\n' "$variable" >&2
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Import Developer ID certificate
+        if: ${{ vars.RELEASE_SIGNING_ENABLED == 'true' }}
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Configure notarization credentials
+        if: ${{ vars.RELEASE_SIGNING_ENABLED == 'true' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials "membar-notary" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD"
+
+      - name: Build unsigned application archive
+        if: ${{ vars.RELEASE_SIGNING_ENABLED != 'true' }}
         env:
           VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           ARCH: ${{ matrix.arch }}
+        run: |
+          VERSION="${VERSION#v}" sh Scripts/package-app.sh
+
+      - name: Build signed and notarized application archive
+        if: ${{ vars.RELEASE_SIGNING_ENABLED == 'true' }}
+        env:
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          ARCH: ${{ matrix.arch }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          NOTARY_PROFILE: membar-notary
         run: |
           VERSION="${VERSION#v}" sh Scripts/package-app.sh
 

@@ -14,7 +14,18 @@ The simplest installation is the versioned application archive from the reposito
 
 Release archives require macOS 13 or newer. The accompanying `.sha256` file can be used to verify an archive with `shasum -a 256`.
 
-The first launch of an unsigned, source-built archive may be blocked by Gatekeeper. Control-click the app, choose **Open**, and confirm, or use **System Settings > Privacy & Security > Open Anyway**. Maintainers can sign and notarize release archives before publishing them for a no-warning install experience.
+### First launch
+
+Default releases are unsigned. After moving `Membar.app` to `/Applications`:
+
+1. Control-click `Membar.app` in Finder and choose **Open**, then confirm.
+2. If macOS blocks it, open **System Settings > Privacy & Security** and choose **Open Anyway**.
+3. If macOS says the app is damaged and neither option is available, verify the archive came from a trusted source and run:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Membar.app
+open /Applications/Membar.app
+```
 
 ### Build from source
 
@@ -59,6 +70,33 @@ The executable and app bundle both use AppKit's accessory activation policy and 
 ## Releases
 
 Releases use [Grubble](https://github.com/davegarvey/grubble) and conventional commits. A push to `main` opens a release PR when a version bump is needed. After that PR is merged, the version workflow creates the `vX.Y.Z` tag and the release workflow builds and publishes native arm64 and x86_64 `.app` archives. The workflow also publishes a SHA-256 checksum alongside each archive.
+
+Release builds are unsigned by default, so users must approve Membar through Gatekeeper once. The workflow supports an optional signed and notarized mode for maintainers with an Apple Developer membership. Local builds remain unsigned unless `SIGNING_IDENTITY` and `NOTARY_PROFILE` are provided to `Scripts/package-app.sh`.
+
+### Release signing setup
+
+To enable signed releases, set the repository Actions variable `RELEASE_SIGNING_ENABLED` to `true` and add these GitHub Actions secrets:
+
+| Secret | Value |
+| --- | --- |
+| `APPLE_CERTIFICATE_BASE64` | Base64-encoded Developer ID Application `.p12` export |
+| `APPLE_CERTIFICATE_PASSWORD` | Password used for the `.p12` export |
+| `APPLE_SIGNING_IDENTITY` | Exact identity from `security find-identity -v -p codesigning` |
+| `APPLE_ID` | Apple Developer account email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for notarization |
+| `APPLE_TEAM_ID` | Apple Developer Team ID |
+
+Create the certificate in the Apple Developer portal, export it with its private key from Keychain Access as a password-protected `.p12`, and encode it on macOS with:
+
+```sh
+base64 -i DeveloperID.p12 | pbcopy
+```
+
+Paste the result into `APPLE_CERTIFICATE_BASE64`. Create the app-specific password at [appleid.apple.com](https://appleid.apple.com/), and add all six values under the repository's **Settings > Secrets and variables > Actions**. Add `RELEASE_SIGNING_ENABLED` with value `true` under the **Variables** tab. The existing `RELEASE_PAT` secret is still required to publish release assets.
+
+If `RELEASE_SIGNING_ENABLED` is absent or not `true`, the workflow publishes unsigned archives normally and users follow the Gatekeeper instructions in the Install section.
+
+After the secrets are configured, the existing `v0.0.1` release can be rebuilt by manually dispatching the Release workflow with version `v0.0.1`; its assets will be replaced with signed and notarized archives.
 
 The version workflow requires a repository secret named `RELEASE_PAT`. It is used only to create the release tag so that GitHub triggers the tag-based build workflow. The PAT should be fine-grained and limited to this repository.
 
