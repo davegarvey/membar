@@ -1,6 +1,6 @@
 # Membar
 
-Membar is a native macOS menu-bar memory indicator. The RAM-chip fill shows system-wide physical-memory utilisation in ten discrete steps; the icon colour comes from macOS memory-pressure events.
+Membar is a native macOS menu-bar memory indicator. The RAM-chip fill follows Activity Monitor's Memory Used metric (App Memory + Wired + Compressed, excluding Cached Files) in ten discrete steps; the icon colour comes from macOS memory-pressure events.
 
 ## Install
 

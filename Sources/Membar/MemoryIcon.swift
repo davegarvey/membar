@@ -48,14 +48,15 @@ enum MemoryIcon {
             NSGraphicsContext.restoreGraphicsState()
         }
 
-        image.isTemplate = false
+        image.isTemplate = pressure == .normal
         return image
     }
 
     private static func color(for pressure: MemoryPressure) -> NSColor {
         switch pressure {
         case .normal:
-            return .systemGreen
+            // A template image lets the menu bar supply its native foreground color.
+            return .black
         case .warning:
             return .systemYellow
         case .critical:

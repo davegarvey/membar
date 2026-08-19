@@ -1,3 +1,23 @@
+# Swift Package Manager
 .build/
+.swiftpm/
+
+# Xcode user data and build products
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# macOS
 .DS_Store
-dist/
+
+# Locally generated application packages and archives
+/dist/
+
+# Editor and patch leftovers
+*.swp
+*.swo
+*~
+
+# Local agent and session state
+/.tala/
