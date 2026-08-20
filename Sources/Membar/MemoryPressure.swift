@@ -1,4 +1,4 @@
-import Dispatch
+import Darwin
 import Foundation
 
 enum MemoryPressure: Equatable {
@@ -17,14 +17,36 @@ enum MemoryPressure: Equatable {
         }
     }
 
-    static func from(_ event: DispatchSource.MemoryPressureEvent) -> MemoryPressure {
-        if event.contains(.critical) {
-            return .critical
-        }
-        if event.contains(.warning) {
+    static func fromKernelValue(_ value: UInt32) -> MemoryPressure? {
+        switch value {
+        case 1:
+            return .normal
+        case 2:
             return .warning
+        case 4:
+            return .critical
+        default:
+            return nil
         }
-        return .normal
+    }
+}
+
+protocol MemoryPressureReading {
+    func current() -> MemoryPressure?
+}
+
+struct MemoryPressureReader: MemoryPressureReading {
+    private static let sysctlName = "kern.memorystatus_vm_pressure_level"
+
+    func current() -> MemoryPressure? {
+        var value: UInt32 = 0
+        var size = MemoryLayout<UInt32>.size
+
+        guard sysctlbyname(Self.sysctlName, &value, &size, nil, 0) == 0 else {
+            return nil
+        }
+
+        return MemoryPressure.fromKernelValue(value)
     }
 }
 

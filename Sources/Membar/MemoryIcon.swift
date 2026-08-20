@@ -6,12 +6,13 @@ enum MemoryIcon {
     static func image(fillLevel: Int, pressure: MemoryPressure) -> NSImage {
         let image = NSImage(size: size)
         let clampedFillLevel = min(max(fillLevel, 0), 10)
-        let foregroundColor = color(for: pressure)
+        let neutralColor = NSColor.labelColor
+        let fillColor = color(for: pressure)
 
         image.lockFocus()
         defer { image.unlockFocus() }
 
-        drawPins(using: foregroundColor)
+        drawPins(using: neutralColor)
 
         let bodyRect = NSRect(x: 4, y: 3.5, width: 16, height: 11)
         let body = NSBezierPath(
@@ -20,11 +21,11 @@ enum MemoryIcon {
             yRadius: 1.8
         )
         body.lineWidth = 1.2
-        foregroundColor.setStroke()
+        neutralColor.setStroke()
         body.stroke()
 
         let barRect = bodyRect.insetBy(dx: 1.6, dy: 1.7)
-        let emptyColor = foregroundColor.withAlphaComponent(0.24)
+        let emptyColor = neutralColor.withAlphaComponent(0.24)
         let emptyBar = NSBezierPath(
             roundedRect: barRect,
             xRadius: 0.8,
@@ -43,7 +44,7 @@ enum MemoryIcon {
                 width: fillWidth,
                 height: barRect.height
             )
-            foregroundColor.setFill()
+            fillColor.setFill()
             NSBezierPath(rect: fillRect).fill()
             NSGraphicsContext.restoreGraphicsState()
         }
@@ -58,7 +59,7 @@ enum MemoryIcon {
             // A template image lets the menu bar supply its native foreground color.
             return .black
         case .warning:
-            return .systemYellow
+            return .systemOrange
         case .critical:
             return .systemRed
         }

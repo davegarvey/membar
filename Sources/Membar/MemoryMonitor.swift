@@ -8,11 +8,11 @@ final class MemoryMonitor {
         label: "com.membar.memory-monitor",
         qos: .utility
     )
-    private let statisticsReader: MemoryStatisticsReader
+    private let statisticsReader: any MemoryStatisticsReading
+    private let pressureReader: any MemoryPressureReading
     private let updateHandler: UpdateHandler
     private let samplingInterval: DispatchTimeInterval
 
-    private var pressureSource: DispatchSourceMemoryPressure?
     private var timer: DispatchSourceTimer?
     private var pressure: MemoryPressure = .normal
     private var lastFillLevel: Int?
@@ -20,11 +20,13 @@ final class MemoryMonitor {
     private var started = false
 
     init(
-        statisticsReader: MemoryStatisticsReader = MemoryStatisticsReader(),
+        statisticsReader: any MemoryStatisticsReading = MemoryStatisticsReader(),
+        pressureReader: any MemoryPressureReading = MemoryPressureReader(),
         samplingInterval: DispatchTimeInterval = .seconds(5),
         updateHandler: @escaping UpdateHandler
     ) {
         self.statisticsReader = statisticsReader
+        self.pressureReader = pressureReader
         self.samplingInterval = samplingInterval
         self.updateHandler = updateHandler
     }
@@ -39,9 +41,7 @@ final class MemoryMonitor {
         queue.async { [weak self] in
             guard let self else { return }
             self.timer?.cancel()
-            self.pressureSource?.cancel()
             self.timer = nil
-            self.pressureSource = nil
             self.started = false
         }
     }
@@ -49,17 +49,6 @@ final class MemoryMonitor {
     private func startOnQueue() {
         guard !started else { return }
         started = true
-
-        let source = DispatchSource.makeMemoryPressureSource(
-            eventMask: .all,
-            queue: queue
-        )
-        source.setEventHandler { [weak self] in
-            guard let self, let source = self.pressureSource else { return }
-            self.handlePressureEvent(source.data)
-        }
-        pressureSource = source
-        source.resume()
 
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(
@@ -74,15 +63,11 @@ final class MemoryMonitor {
         timer.resume()
     }
 
-    private func handlePressureEvent(_ event: DispatchSource.MemoryPressureEvent) {
-        let nextPressure = MemoryPressure.from(event)
-        guard nextPressure != pressure else { return }
-
-        pressure = nextPressure
-        sampleAndPublish()
-    }
-
     private func sampleAndPublish() {
+        if let currentPressure = pressureReader.current() {
+            pressure = currentPressure
+        }
+
         guard let utilization = statisticsReader.utilization() else {
             return
         }
