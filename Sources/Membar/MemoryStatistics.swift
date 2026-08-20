@@ -1,7 +1,11 @@
 import Darwin
 import Foundation
 
-struct MemoryStatisticsReader {
+protocol MemoryStatisticsReading {
+    func utilization() -> Double?
+}
+
+struct MemoryStatisticsReader: MemoryStatisticsReading {
     func utilization() -> Double? {
         var statistics = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(
@@ -29,19 +33,14 @@ struct MemoryStatisticsReader {
             return nil
         }
 
-        let usedPages = MemoryUsage.activityMonitorUsedPages(
+        return MemoryUsage.activityMonitorUtilization(
             internalPages: UInt64(statistics.internal_page_count),
             wirePages: UInt64(statistics.wire_count),
             compressedPages: UInt64(statistics.compressor_page_count),
-            purgeablePages: UInt64(statistics.purgeable_count)
+            purgeablePages: UInt64(statistics.purgeable_count),
+            pageSize: pageSize,
+            physicalMemory: totalBytes
         )
-        let usedBytes = usedPages.multipliedReportingOverflow(by: pageSize)
-
-        guard !usedBytes.overflow else {
-            return nil
-        }
-
-        return min(max(Double(usedBytes.partialValue) / Double(totalBytes), 0), 1)
     }
 }
 
@@ -58,5 +57,32 @@ enum MemoryUsage {
             ? internalPages - purgeablePages
             : 0
         return appPages + wirePages + compressedPages
+    }
+
+    static func activityMonitorUtilization(
+        internalPages: UInt64,
+        wirePages: UInt64,
+        compressedPages: UInt64,
+        purgeablePages: UInt64,
+        pageSize: UInt64,
+        physicalMemory: UInt64
+    ) -> Double? {
+        guard pageSize > 0, physicalMemory > 0 else {
+            return nil
+        }
+
+        let usedPages = activityMonitorUsedPages(
+            internalPages: internalPages,
+            wirePages: wirePages,
+            compressedPages: compressedPages,
+            purgeablePages: purgeablePages
+        )
+        let usedBytes = usedPages.multipliedReportingOverflow(by: pageSize)
+
+        guard !usedBytes.overflow else {
+            return nil
+        }
+
+        return min(max(Double(usedBytes.partialValue) / Double(physicalMemory), 0), 1)
     }
 }
